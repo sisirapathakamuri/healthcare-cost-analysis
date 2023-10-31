@@ -1,0 +1,643 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r}
+
+#importing all required libraries
+library(tidyverse)
+library(imputeTS)
+library(ggplot2)
+library(rio)
+library("kernlab")
+library("caret")
+library("ggplot2")
+library("rpart")
+library("rpart.plot")
+```
+
+
+```{r}
+#Loading the dataset using read.csv function.
+hmoDF <- read.csv("https://intro-datascience.s3.us-east-2.amazonaws.com/HMO_data.csv")
+
+#Displaying the first five rows of the dataset.
+head(hmoDF)
+```
+
+
+```{r}
+#Displys the entire dataset in new tab frame
+View(hmoDF)
+```
+
+
+```{r}
+#The summary() function in R can be used to quickly summarize the values in a data frame.
+summary(hmoDF, include='all')
+```
+
+
+```{r}
+#The is.na() method checks the null/NA values for all the columns in the dataset.
+#The ColSums counts the number of rows satisfying the condition.
+colSums(is.na(hmoDF))
+```
+Above, we can see that bmi has 78 null  values whereas hypertension has 80 null values.
+
+
+```{r}
+library(imputeTS)
+
+#Missing values get replaced by values of approx, spline or stinterp interpolation.
+head(na_interpolation(hmoDF$bmi))
+head(na_interpolation(hmoDF$hypertension))
+```
+
+
+```{r}
+#performing na_interpolation
+hmoDF$bmi <- na_interpolation(hmoDF$bmi)
+hmoDF$hypertension <- na_interpolation(hmoDF$hypertension)
+
+#checking the null values after na_interpolation()
+sum(is.na(hmoDF$bmi))
+sum(is.na(hmoDF$hypertension))
+```
+
+
+```{r}
+#The quantile function has sample that is divided into equal groups or sizes
+quantile(hmoDF$cost)
+```
+
+```{r}
+#Created a new Column isexpensive and stored 0 or 1 based on cost column
+#If cost is greater than 4775(ie 75 percentile)
+#then store 1 else store 0.
+
+hmoDF$isexpensive <- with(hmoDF, ifelse(cost >= 4775, TRUE, FALSE))
+View(hmoDF)
+head(hmoDF)
+```
+
+
+```{r}
+#Glimpse can be used to see the columns of the dataset and display some portion of the data
+library(dplyr)
+glimpse(hmoDF)
+```
+
+
+```{r}
+library(ggplot2)
+
+#Using ggplot for scatter plot visualization
+myPlot2 <- ggplot(hmoDF)
+
+#using bmi on x-axis and cost on y-axis along with color as smoker
+myPlot2 <- myPlot2 + aes(x=bmi, y=cost, color = smoker)
+myPlot2 <- myPlot2 + geom_point()
+
+#Dsiplaying ggplot
+myPlot2
+
+```
+
+
+```{r}
+#The above scatter plot suggests that as the BMI of the person increases, the smoking 
+#plays an important role in increasing the cost of the patient. The more the person smokes, the more
+#they smoke, the more they are at a risk of high cost. Hence, there is definitely a correlation
+#between these 3 factors.
+```
+
+
+
+```{r}
+library(ggplot2)
+
+myPlot2 <- ggplot(hmoDF)
+
+#using bmi on x-axis and cost on y-axis along with exercise as color
+myPlot2 <- myPlot2 + aes(x=bmi, y=cost, color = exercise)
+myPlot2 <- myPlot2 + geom_point()
+myPlot2
+```
+
+
+```{r}
+#The above scatter plot suggests that as the BMI of the person increases, the exercise 
+#plays an important role in increasing the cost of the patient. The higher the bmi and  less active the 
+#person is, the more they are at a risk of high cost. Hence, there is definitely a correlation
+#between these 3 factors. This, also suggests that less bmi and/or being active is very essential.
+```
+
+
+```{r}
+library(ggplot2)
+
+myPlot2 <- ggplot(hmoDF)
+myPlot2 <- myPlot2 + aes(x=bmi, y=cost, color = location_type)
+myPlot2 <- myPlot2 + geom_point()
+myPlot2
+```
+```{r}
+#The above scatter plot about cost, bmi and location_type suggest that there is no significant 
+#correlation of location_type
+#with bmi and cost. When the bmi increases, the cost is high for both county 
+#and urban population equally. The only one thing we can
+#infer is there are comparatively more people from urban location who have high bmi above 40.
+
+```
+
+
+
+```{r}
+library(ggplot2)
+
+myPlot2 <- ggplot(hmoDF)
+myPlot2 <- myPlot2 + aes(x=bmi, y=cost, color = hypertension)
+myPlot2 <- myPlot2 + geom_point()
+myPlot2
+```
+```{r}
+#The above scatter plot suggests that even if a patient have high hypertension, keeping the bmi below 
+#30 could significantly reduce the cost. However, as bmi increases, the cost is going to increase
+#irrespective of hypertension. Hence, hypertension has no major correlation with bmi to impact cost.
+```
+
+
+
+```{r}
+library(ggplot2)
+
+myPlot2 <- ggplot(hmoDF)
+myPlot2 <- myPlot2 + aes(x=bmi, y=cost, color = married)
+myPlot2 <- myPlot2 + geom_point()
+myPlot2
+```
+
+
+```{r}
+library(ggplot2)
+
+myPlot2 <- ggplot(hmoDF)
+myPlot2 <- myPlot2 + aes(x=age, y=cost, color = smoker)
+myPlot2 <- myPlot2 + geom_point()
+myPlot2
+```
+
+```{r}
+library(ggplot2)
+
+myPlot2 <- ggplot(hmoDF)
+myPlot2 <- myPlot2 + aes(x =yearly_physical, y=cost, color = smoker)
+myPlot2 <- myPlot2 + geom_point()
+myPlot2
+```
+
+
+```{r}
+library(ggplot2)
+library(MASS)
+ggplot(data=hmoDF) + aes(x=age, y=cost) + geom_point() +
+geom_smooth(method="lm", se=FALSE)
+
+#The scatter plot below suggest that there is positive correltion between cost and age
+```
+
+```{r}
+library(ggplot2)
+library(MASS)
+ggplot(data=hmoDF) + aes(x=bmi, y=cost) + geom_point() +
+geom_smooth(method="lm", se=FALSE)
+
+#The scatter plot below suggest that there is no significant correltion between hypertension and cost 
+```
+
+```{r}
+library(ggplot2)
+library(MASS)
+ggplot(data=hmoDF) + aes(x=yearly_physical, y=cost) + geom_point() +
+geom_smooth(method="lm", se=FALSE)
+
+#The yearly_physical has some significant correlation with cst factor and thus
+#it could be a good attribute to be considered for prediction.
+```
+
+
+
+```{r}
+data123 <- hmoDF
+data123$smoker[hmoDF$smoker == 'yes'] <- 1
+data123$smoker[hmoDF$smoker == 'no'] <- 0
+
+
+plot(data123$smoker, hmoDF$cost)
+```
+
+
+Apriori
+
+
+```{r}
+library(arules)
+library(arulesViz)
+data1 <- hmoDF
+data1$bmi <-  as.factor(hmoDF$bmi)
+data1$children <-  as.factor(hmoDF$children)
+data1$age <-  as.factor(hmoDF$age)
+data1$smoker <- as.factor(hmoDF$smoker)
+data1$location <- as.factor(hmoDF$location)
+data1$location_type <- as.factor(hmoDF$location_type)
+data1$education_level <- as.factor(hmoDF$education_level)
+data1$yearly_physical <- as.factor(hmoDF$yearly_physical)
+data1$exercise <- as.factor(hmoDF$exercise )
+data1$married <- as.factor(hmoDF$married)
+data1$gender <- as.factor(hmoDF$gender)
+data1$cost <- as.factor(hmoDF$cost)
+data1$children <- as.factor(hmoDF$children)
+data1$hypertension <- as.factor(hmoDF$hypertension)
+data1$isexpensive <- as.factor(hmoDF$isexpensive)
+datax <-transactions(data1)
+#itemFrequency(datax)
+itemFrequencyPlot(datax, topN=10)
+```
+
+
+```{r}
+rules1 <- apriori(datax,
+ parameter=list(supp=0.3, conf=0.85),
+ control=list(verbose=F),
+ appearance=list(default="lhs",rhs=("isexpensive=FALSE")))
+summary(rules1)
+inspect(rules1)
+inspectDT(rules1)
+```
+
+
+
+Linear Model
+
+```{r}
+lmout <- lm(isexpensive~age+bmi+children+smoker+hypertension+yearly_physical+exercise, data = hmoDF)
+summary(lmout)
+lmout
+```
+
+
+```{r}
+lmout <- lm(isexpensive~age+bmi+children+smoker+hypertension+yearly_physical+exercise+gender+married, data = hmoDF)
+summary(lmout)
+lmout
+```
+
+SVM Model 1
+
+```{r}
+library("dplyr")
+
+# Remove columns using select()
+#hmosvmDF <- hmoDF %>% select(-hmoDFcost)
+hmosvmDF <- hmoDF[,-14]
+hmosvmDF$isexpensive <- as.factor(hmosvmDF$isexpensive)
+#View(hmosvmDF)
+```
+
+
+```{r}
+ library(caret)
+ library(kernlab)
+ set.seed(123)
+ 
+ trainList <- createDataPartition(y=hmosvmDF$isexpensive ,p=.8 , list=FALSE)
+ trainset <- hmosvmDF[trainList,]
+ testset <- hmosvmDF[-trainList,]
+ svmModelOne <- ksvm(isexpensive ~ age + bmi + children + smoker + hypertension + yearly_physical + exercise,data=trainset,C=5,cross=3,prob.model = TRUE )
+ svmModelOne
+```
+
+
+
+```{r}
+ svmPredOne<- predict(svmModelOne,newdata=testset,type='response')
+ table(svmPredOne,testset$isexpensive)
+ 
+ confusionMatrix(svmPredOne,testset$isexpensive)
+```
+
+SVM Model 2
+
+```{r}
+library(caret)
+library(kernlab)
+set.seed(123)
+
+
+
+trainList <- createDataPartition(y=hmosvmDF$isexpensive ,p=.8 , list=FALSE)
+trainset <- hmosvmDF[trainList,]
+testset <- hmosvmDF[-trainList,]
+svmModelTwo <- ksvm(isexpensive ~ .,data=trainset,C=5,cross=3,prob.model = TRUE )
+svmModelTwo
+```
+
+
+
+```{r}
+svmPredTwo<- predict(svmModelTwo,newdata=testset,type='response')
+table(svmPredTwo,testset$isexpensive)
+
+confusionMatrix(svmPredTwo,testset$isexpensive)
+
+```
+
+SVM Model 3
+
+```{r}
+ library(caret)
+ library(kernlab)
+ set.seed(123)
+ 
+ trainList <- createDataPartition(y=hmosvmDF$isexpensive ,p=.8 , list=FALSE)
+ trainset <- hmosvmDF[trainList,]
+ testset <- hmosvmDF[-trainList,]
+ svmModelThree <- ksvm(isexpensive ~ age + bmi + children + smoker + hypertension + exercise + location_type,data=trainset,C=5,cross=3,prob.model = TRUE )
+ svmModelThree
+```
+
+
+
+
+```{r}
+ svmPredThree<- predict(svmModelThree,newdata=testset,type='response')
+ table(svmPredThree,testset$isexpensive)
+ 
+ confusionMatrix(svmPredThree,testset$isexpensive)
+```
+
+Decision Tree Model
+```{r}
+hmoDF
+```
+
+
+```{r}
+hmosvmDF
+```
+
+
+```{r}
+
+ library(rpart)
+ library(rpart.plot)
+ 
+ treetrainList <- createDataPartition(y=hmosvmDF$isexpensive ,p=.8 , list=FALSE)
+ trainset <- hmosvmDF[treetrainList,]
+ testset <- hmosvmDF[-treetrainList,]
+ hmosvmDF$isexpensive <- as.factor(hmosvmDF$isexpensive)
+ tree <- rpart(isexpensive ~ age + bmi + children + smoker + hypertension + exercise + yearly_physical + location_type, data=trainset, method='class')
+ tree
+```
+
+
+```{r}
+ treePred<- predict(tree,newdata=testset,type='class')
+ table(treePred,testset$isexpensive)
+ 
+ confusionMatrix(treePred,as.factor(testset$isexpensive))
+
+```
+
+
+Map Visualization
+
+```{r}
+
+hmoDF$smoker1 <- hmoDF$smoker
+hmoDF$smoker1[hmoDF$smoker == 'yes'] <- 1
+hmoDF$smoker1[hmoDF$smoker == 'no'] <- 0
+hmoDF$smoker1 <- as.numeric(hmoDF$smoker1)
+
+sum(hmoDF$smoker1)
+dfSimple <- hmoDF %>%
+  group_by(location) %>%
+  summarise(bmi = mean(bmi),cost=mean(cost),isexpensive=mean(isexpensive ),age=mean(age),smoke= sum(smoker1)/n(),sum=n())
+dfSimple
+
+hmoDF <- hmoDF[,-16]
+```
+
+
+```{r}
+ library(tidyverse)
+ library(ggplot2)
+ us <- map_data("state")
+ us$state_name = tolower(us$region)
+ dfSimple$location <- tolower(dfSimple$location)
+ dfMerged <- merge(dfSimple, us, all.y = TRUE, by.x="location", by.y = "state_name")
+ dfMerged <- dfMerged %>% arrange(order)
+ map <- ggplot(dfMerged)
+ map <- map + aes(x=long, y=lat, group=group, fill=cost) + geom_polygon(color = "black")
+ map <- map + expand_limits(x=dfMerged$long, y=dfMerged$lat)
+ map <- map + coord_map() + ggtitle("State Cost Distribution")
+ map
+```
+
+
+```{r}
+ library(tidyverse)
+ library(ggplot2)
+ us <- map_data("state")
+ us$state_name = tolower(us$region)
+ dfSimple$location <- tolower(dfSimple$location)
+ dfMerged <- merge(dfSimple, us, all.y = TRUE, by.x="location", by.y = "state_name")
+ dfMerged <- dfMerged %>% arrange(order)
+  dfMerged <- dfMerged %>% filter(region=='connecticut' | region=='maryland' | region=='massachusetts'
+                                | region == 'new york'|region =='new jersey' | region =='pennsylvania' 
+                                | region=='rhode island')
+ map <- ggplot(dfMerged)
+ map <- map + aes(x=long, y=lat, group=group, fill=cost) + geom_polygon(color = "black")
+ map <- map + expand_limits(x=dfMerged$long, y=dfMerged$lat)
+ map <- map + coord_map() + ggtitle("State Cost Distribution")
+ map
+```
+
+
+
+
+```{r}
+ library(tidyverse)
+ library(ggplot2)
+ us <- map_data("state")
+ us$state_name = tolower(us$region)
+ dfSimple$location <- tolower(dfSimple$location)
+ dfMerged <- merge(dfSimple, us, all.y = TRUE, by.x="location", by.y = "state_name")
+ dfMerged <- dfMerged %>% arrange(order)
+ 
+ map <- ggplot(dfMerged)
+ map <- map + aes(x=long, y=lat, group=group, fill=smoke) + geom_polygon(color = "black")
+ map <- map + expand_limits(x=dfMerged$long, y=dfMerged$lat)
+ map <- map + coord_map() + ggtitle("State Smoker Distribution")
+ map
+```
+
+
+```{r}
+ library(tidyverse)
+ library(ggplot2)
+ us <- map_data("state")
+ us$state_name = tolower(us$region)
+ dfSimple$location <- tolower(dfSimple$location)
+ dfMerged <- merge(dfSimple, us, all.y = TRUE, by.x="location", by.y = "state_name")
+ dfMerged <- dfMerged %>% arrange(order)
+  dfMerged <- dfMerged %>% filter(region=='connecticut' | region=='maryland' | region=='massachusetts'
+                                | region == 'new york'|region =='new jersey' | region =='pennsylvania' 
+                                | region=='rhode island')
+ 
+ map <- ggplot(dfMerged)
+ map <- map + aes(x=long, y=lat, group=group, fill=smoke) + geom_polygon(color = "black")
+ map <- map + expand_limits(x=dfMerged$long, y=dfMerged$lat)
+ map <- map + coord_map() + ggtitle("State Smoker Distribution")
+ map
+```
+
+
+
+```{r}
+ library(tidyverse)
+ library(ggplot2)
+ us <- map_data("state")
+ us$state_name = tolower(us$region)
+ dfSimple$location <- tolower(dfSimple$location)
+ dfMerged <- merge(dfSimple, us, all.y = TRUE, by.x="location", by.y = "state_name")
+ dfMerged <- dfMerged %>% arrange(order)
+
+ dfMerged <- dfMerged %>% filter(region=='connecticut' | region=='maryland' | region=='massachusetts'
+                                | region == 'new york'|region =='new jersey' | region =='pennsylvania' 
+                                | region=='rhode island')
+ map <- ggplot(dfMerged)
+ map <- map + aes(x=long, y=lat, group=group, fill=bmi) + geom_polygon(color = "black")
+ map <- map + expand_limits(x=dfMerged$long, y=dfMerged$lat)
+ map <- map + coord_map() + ggtitle("State BMI Distribution")
+ map
+
+```
+
+
+```{r}
+ library(tidyverse)
+ library(ggplot2)
+ us <- map_data("state")
+ us$state_name = tolower(us$region)
+ dfSimple$location <- tolower(dfSimple$location)
+ dfMerged <- merge(dfSimple, us, all.y = TRUE, by.x="location", by.y = "state_name")
+ dfMerged <- dfMerged %>% arrange(order)
+ map <- ggplot(dfMerged)
+ map <- map + aes(x=long, y=lat, group=group, fill=bmi) + geom_polygon(color = "black")
+ map <- map + expand_limits(x=dfMerged$long, y=dfMerged$lat)
+ map <- map + coord_map() + ggtitle("State BMI Distribution")
+ map
+```
+
+
+
+```{r}
+ library(tidyverse)
+ library(ggplot2)
+ us <- map_data("state")
+ us$state_name = tolower(us$region)
+ dfSimple$location <- tolower(dfSimple$location)
+ dfMerged <- merge(dfSimple, us, all.y = TRUE, by.x="location", by.y = "state_name")
+ dfMerged <- dfMerged %>% arrange(order)
+ dfMerged <- dfMerged %>% filter(region=='connecticut' | region=='maryland' | region=='massachusetts'
+                                | region == 'new york'|region =='new jersey' | region =='pennsylvania' 
+                                | region=='rhode island')
+ map <- ggplot(dfMerged)
+ map <- map + aes(x=long, y=lat, group=group, fill=age) + geom_polygon(color = "black")
+ map <- map + expand_limits(x=dfMerged$long, y=dfMerged$lat)
+ map <- map + coord_map() + ggtitle("State Age Distribution")
+ map
+
+```
+
+
+```{r}
+# #best_model <- treeOne
+# best_model <- tree
+# 
+# #Please change the path in your system before running this code
+# saveRDS(best_model,file="C:/Users/Vedantp/Documents/best_model3.rds")
+# 
+# #Please change the path in your system before running this code
+# readRDS(file="C:/Users/Vedantp/Documents/best_model3.rds")
+
+```
+
+  
+```{r}
+# library(shiny)
+# library(caret)
+# library(kernlab) 
+# library(e1071)
+# library(tidyverse)
+# ui <- fluidPage (
+#   #Read the data
+#   fileInput("upload", label="inpout file", accept = c(".csv")),
+#   #Read the actual (solution) data
+#   fileInput("upload_Solution", label="solution file", accept = c(".csv")),
+#   #get a number (how much of the dataframe to show)
+#   numericInput("n", "Number of Rows", value = 5, min = 1, step = 1),
+#   #a place to output a table (i.e., a dataframe)
+#   tableOutput("headForDF"),
+#   #output the results (for now, just simple text)
+#   verbatimTextOutput("txt_results", placeholder = TRUE)
+# )
+# 
+# server <- function(input, output, session) {
+#   #load a model, do prediction and compute the confusion matrix
+#   use_model_to_predict <- function(df, df_solution){
+# 
+#     #Please change the path in your system before running this code
+#     readRDS(file="C:/Users/Vedantp/Documents/best_model3.rds") 
+#     
+#     #Please change the path in your system before running this code
+#     my_model <- readRDS("C:/Users/Vedantp/Documents/best_model3.rds")
+#     readRDS(file="C:/Users/Vedantp/Documents/best_model3.rds")
+#     print('enter')
+#     svmPred <- predict(my_model, df, type = "class")
+#     #show how the model performed
+#     print(svmPred)
+#     confusionMatrix(svmPred, as.factor(df_solution$expensive))
+#   }
+#   #require an input file, then read a CSV file
+#   getTestData <- reactive({ 
+#     req(input$upload)
+#     read_csv(input$upload$name)
+#   })
+#   #require an the actual values for the prediction (i.e. solution file)
+#   getSolutionData <- reactive({ 
+#     req(input$upload_Solution)
+#     read_csv(input$upload_Solution$name) 
+#   })
+#   output$txt_results <- renderPrint({
+#     #load the data
+#     dataset <- getTestData() 
+#     dataset_solution <- getSolutionData()
+#     #load and use the model on the new data
+#     use_model_to_predict(dataset, dataset_solution)
+#   })
+#   #show a few lines of the dataframe
+#   output$headForDF <- renderTable({
+#     df <- getTestData()
+#     head(df, input$n)
+#   })
+# }
+# shinyApp(ui, server)
+```
+  
+
+
+
